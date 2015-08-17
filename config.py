@@ -50,9 +50,10 @@ def configure(advanced):
 
 Taiga = conf.registerPlugin('Taiga')
 
-conf.registerChannelValue(Taiga, 'server',
-    registry.String("0.0.0.0", _("""Server to listen for the Taiga webhook notification""")))
-conf.registerChannelValue(Taiga, 'port',
-    registry.NonNegativeInteger(8080, _("""Port to listen for the Taiga webhook notification""")))
+conf.registerChannelValue(Taiga, 'secret-key',
+    registry.String("XXXXXXXX", _("""The service secret key""")))
+
+conf.registerChannelValue(Taiga, 'verify-signature',
+    registry.Boolean(True, _("""Whether the signature should be checked or not""")))
 
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:

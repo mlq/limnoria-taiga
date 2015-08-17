@@ -28,11 +28,15 @@
 
 ###
 
+import json
+
 import supybot.utils as utils
 from supybot.commands import *
 import supybot.plugins as plugins
 import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
+import supybot.log as log
+import supybot.httpserver as httpserver
 try:
     from supybot.i18n import PluginInternationalization
     _ = PluginInternationalization('Taiga')
@@ -41,10 +45,78 @@ except ImportError:
     # without the i18n module
     _ = lambda x: x
 
+class TaigaWebHookService(httpserver.SupyHTTPServerCallback):
+    """http://taigaio.github.io/taiga-doc/dist/webhooks.html"""
+
+    name = "TaigaWebHookService"
+    defaultResponse = """This plugin handles only POST request, please don't use other requests."""
+
+    def __init__(self, plugin):
+        self.log = log.getPluginLogger('Taiga')
+        self.secret_key = plugin.registryValue('secret-key')
+        self.verify_signature = plugin.registryValue('verify-signature')
+
+    def _verify_signature(self, key, data, signature):
+        mac = hmac.new(key.encode("utf-8"), msg=data, digestmod=hashlib.sha1)
+        return mac.hexdigest() == signature
+
+    def _send_error(self, handler, message):
+        handler.send_response(403)
+        handler.send_header('Content-type', 'text/plain')
+        handler.end_headers()
+        handler.wfile.write(message.encode('utf-8'))
+
+    def _send_ok(self, handler):
+        handler.send_response(200)
+        handler.send_header('Content-type', 'text/plain')
+        handler.end_headers()
+        handler.wfile.write(bytes('OK', 'utf-8'))
+
+    def _handle_payload(self, payload):
+        print(payload)
+        pass
+
+    def doPost(self, handler, path, form):
+        headers = dict(self.headers)
+
+        # Check for Taiga webhook signature
+        if self.verify_signature is True:
+            if 'X-TAIGA-WEBHOOK-SIGNATURE' not in headers:
+                self._send_error(handler, "Error: No signature provided.")
+                return
+
+            # Verify signature
+            signature = headers['X-TAIGA-WEBHOOK-SIGNATURE']
+            if self._verify_signature(self.secret_key, data, signature) is False:
+                self._send_error(handler, "Error: Invalid signature.")
+                return
+
+        # Handle payload
+        try:
+            payload = json.loads(form.decode('utf-8'))
+            self._handle_payload(payload)
+        except Exception as e:
+            self._send_error(handler, "Error: Incorrect payload")
+
+        # Return OK
+        self._send_ok(handler)
+
 
 class Taiga(callbacks.Plugin):
     """Plugin for communication and notifications of a Taiga project management tool instance"""
     threaded = True
+
+    def __init__(self, irc):
+        self.__parent = super(Taiga, self)
+        self.__parent.__init__(irc)
+
+        callback = TaigaWebHookService(self)
+        httpserver.hook('taiga', callback)
+
+    def die(self):
+        httpserver.unhook('taiga')
+
+        self.__parent.die()
 
 
 Class = Taiga
