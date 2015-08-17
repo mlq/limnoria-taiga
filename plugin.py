@@ -34,6 +34,7 @@ import supybot.utils as utils
 from supybot.commands import *
 import supybot.plugins as plugins
 import supybot.ircutils as ircutils
+import supybot.ircmsgs as ircmsgs
 import supybot.callbacks as callbacks
 import supybot.log as log
 import supybot.httpserver as httpserver
@@ -45,14 +46,76 @@ except ImportError:
     # without the i18n module
     _ = lambda x: x
 
+
+class TaigaHandler(object):
+    def __init__(self, irc, channel):
+        self.irc = irc
+        self.channel = channel
+        self.log = log.getPluginLogger('Taiga')
+
+    def handle_payload(self, payload):
+        if 'type' not in payload:
+            return
+        if 'action' not in payload:
+            return
+        if 'data' not in payload:
+            return
+
+        try:
+            handlers = {
+                "milestone": self._handle_milestone,
+                "userstory": self._handle_userstory,
+                "task":      self._handle_task,
+                "issue":     self._handle_issue,
+                "wikipage":  self._handle_wikipage,
+                "test":      self._handle_test
+            }
+
+            method = handlers.get(payload['type'], None)
+            method(payload)
+        except NameError:
+            self.log.debug("Unhandled type: '%s'" % payload['type'])
+            return
+
+    def _send_message(self, msg):
+        msg = ircmsgs.privmsg(self.channel, msg)
+        self.irc.queueMsg(msg)
+
+    def _handle_milestone(self, payload):
+        user = payload['data']['owner']['name']
+        name = payload['data']['name']
+        action = payload['action']
+
+        msg = "Milestone '%s' %sd by %s" % (name, action, user)
+        self._send_message(msg)
+        pass
+
+    def _handle_userstory(self, payload):
+        pass
+
+    def _handle_task(self, payload):
+        pass
+
+    def _handle_issue(self, payload):
+        pass
+
+    def _handle_wikipage(self, payload):
+        pass
+
+    def _handle_test(self, payload):
+        pass
+
+
 class TaigaWebHookService(httpserver.SupyHTTPServerCallback):
     """http://taigaio.github.io/taiga-doc/dist/webhooks.html"""
 
     name = "TaigaWebHookService"
     defaultResponse = """This plugin handles only POST request, please don't use other requests."""
 
-    def __init__(self, plugin):
+    def __init__(self, plugin, irc):
         self.log = log.getPluginLogger('Taiga')
+        self.channel = plugin.registryValue('channel')
+        self.taiga = TaigaHandler(irc, self.channel)
         self.secret_key = plugin.registryValue('secret-key')
         self.verify_signature = plugin.registryValue('verify-signature')
 
@@ -72,31 +135,28 @@ class TaigaWebHookService(httpserver.SupyHTTPServerCallback):
         handler.end_headers()
         handler.wfile.write(bytes('OK', 'utf-8'))
 
-    def _handle_payload(self, payload):
-        print(payload)
-        pass
-
     def doPost(self, handler, path, form):
         headers = dict(self.headers)
 
         # Check for Taiga webhook signature
         if self.verify_signature is True:
             if 'X-TAIGA-WEBHOOK-SIGNATURE' not in headers:
-                self._send_error(handler, "Error: No signature provided.")
+                self._send_error(handler, _("""Error: No signature provided."""))
                 return
 
             # Verify signature
             signature = headers['X-TAIGA-WEBHOOK-SIGNATURE']
             if self._verify_signature(self.secret_key, data, signature) is False:
-                self._send_error(handler, "Error: Invalid signature.")
+                self._send_error(handler, _("""Error: Invalid signature."""))
                 return
 
         # Handle payload
         try:
             payload = json.loads(form.decode('utf-8'))
-            self._handle_payload(payload)
+            self.taiga.handle_payload(payload)
         except Exception as e:
-            self._send_error(handler, "Error: Incorrect payload")
+            print(e)
+            self._send_error(handler, _("""Error: Invalid data sent."""))
 
         # Return OK
         self._send_ok(handler)
@@ -110,7 +170,7 @@ class Taiga(callbacks.Plugin):
         self.__parent = super(Taiga, self)
         self.__parent.__init__(irc)
 
-        callback = TaigaWebHookService(self)
+        callback = TaigaWebHookService(self, irc)
         httpserver.hook('taiga', callback)
 
     def die(self):

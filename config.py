@@ -50,6 +50,9 @@ def configure(advanced):
 
 Taiga = conf.registerPlugin('Taiga')
 
+conf.registerGlobalValue(Taiga, 'channel',
+    registry.String("#gojira-taiga", _("""The channel the plugin should send messages to""")))
+
 conf.registerChannelValue(Taiga, 'secret-key',
     registry.String("XXXXXXXX", _("""The service secret key""")))
 
