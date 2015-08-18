@@ -40,17 +40,19 @@ import supybot.log as log
 import supybot.httpserver as httpserver
 try:
     from supybot.i18n import PluginInternationalization
+    from supybot.i18n import internationalizeDocstring
     _ = PluginInternationalization('Taiga')
 except ImportError:
     # Placeholder that allows to run the plugin on a bot
     # without the i18n module
     _ = lambda x: x
+    internationalizeDocstring = lambda x:x
 
 
 class TaigaHandler(object):
-    def __init__(self, irc, channel):
+    def __init__(self, plugin, irc):
         self.irc = irc
-        self.channel = channel
+        self.plugin = plugin
         self.log = log.getPluginLogger('Taiga')
 
     def handle_payload(self, payload):
@@ -77,9 +79,12 @@ class TaigaHandler(object):
             self.log.debug("Unhandled type: '%s'" % payload['type'])
             return
 
-    def _send_message(self, msg):
-        msg = ircmsgs.privmsg(self.channel, msg)
-        self.irc.queueMsg(msg)
+    def _send_message(self, project_id, msg):
+        for channel in self.irc.state.channels.keys():
+            projects = self.plugin._load_projects(channel)
+            if str(project_id) in projects.keys():
+                msg = ircmsgs.privmsg(channel, msg)
+                self.irc.queueMsg(msg)
 
     def _handle_milestone(self, payload):
         user = payload['data']['owner']['name']
@@ -87,7 +92,7 @@ class TaigaHandler(object):
         action = payload['action']
 
         msg = "Milestone '%s' %sd by %s" % (name, action, user)
-        self._send_message(msg)
+        self._send_message(payload['data']['project'], msg)
         pass
 
     def _handle_userstory(self, payload):
@@ -114,10 +119,9 @@ class TaigaWebHookService(httpserver.SupyHTTPServerCallback):
 
     def __init__(self, plugin, irc):
         self.log = log.getPluginLogger('Taiga')
-        self.channel = plugin.registryValue('channel')
-        self.taiga = TaigaHandler(irc, self.channel)
-        self.secret_key = plugin.registryValue('secret-key')
-        self.verify_signature = plugin.registryValue('verify-signature')
+        self.taiga = TaigaHandler(plugin, irc)
+        self.plugin = plugin
+        self.irc = irc
 
     def _verify_signature(self, key, data, signature):
         mac = hmac.new(key.encode("utf-8"), msg=data, digestmod=hashlib.sha1)
@@ -138,15 +142,34 @@ class TaigaWebHookService(httpserver.SupyHTTPServerCallback):
     def doPost(self, handler, path, form):
         headers = dict(self.headers)
 
+        network = None
+        channel = None
+
+        try:
+            information = path.split('/')[1:]
+            network = information[0]
+            channel = '#' + information[1]
+        except IndexError:
+            self._send_error(handler, _("""Error: You need to provide the
+                                        network name and the channel in
+                                        url."""))
+            return
+
+        if self.irc.network != network or channel in self.irc.state.channels is False:
+            return
+
+        secret_key = self.plugin.registryValue('secret-key', channel)
+        verify_signature = self.plugin.registryValue('verify-signature', channel)
+
         # Check for Taiga webhook signature
-        if self.verify_signature is True:
+        if verify_signature is True:
             if 'X-TAIGA-WEBHOOK-SIGNATURE' not in headers:
                 self._send_error(handler, _("""Error: No signature provided."""))
                 return
 
             # Verify signature
             signature = headers['X-TAIGA-WEBHOOK-SIGNATURE']
-            if self._verify_signature(self.secret_key, data, signature) is False:
+            if self._verify_signature(secret_key, data, signature) is False:
                 self._send_error(handler, _("""Error: Invalid signature."""))
                 return
 
@@ -167,8 +190,10 @@ class Taiga(callbacks.Plugin):
     threaded = True
 
     def __init__(self, irc):
+        global instance
         self.__parent = super(Taiga, self)
         self.__parent.__init__(irc)
+        instance = self
 
         callback = TaigaWebHookService(self, irc)
         httpserver.hook('taiga', callback)
@@ -177,6 +202,85 @@ class Taiga(callbacks.Plugin):
         httpserver.unhook('taiga')
 
         self.__parent.die()
+
+    def _load_projects(self, channel):
+        projects_string = self.registryValue('projects', channel)
+        if projects_string is None or len(projects_string) == 0:
+            return {}
+        else:
+            return json.loads(projects_string)
+
+    def _save_projects(self, projects, channel):
+        string = ''
+        if projects is not None:
+            string = json.dumps(projects)
+        self.setRegistryValue('projects', value=string, channel=channel)
+
+    class taiga(callbacks.Commands):
+        """Taiga commands"""
+
+        class project(callbacks.Commands):
+            """Project commands"""
+
+            @internationalizeDocstring
+            def add(self, irc, msg, args, channel, project_id, project_slug):
+                """[<channel>] <project-id> <project-slug>
+
+                Announces the changes of the project with the id <project-id>
+                and the slug <project-slug> to <channel>.
+                """
+                projects = instance._load_projects(channel)
+                if project_id in projects:
+                    irc.error(_("""This project is already announced to this
+                                channel."""))
+                    return
+
+                # Save new project mapping
+                projects[project_id] = project_slug
+                instance._save_projects(projects, channel)
+
+                irc.replySuccess()
+
+            add = wrap(add, ['channel', 'id', 'text'])
+
+            @internationalizeDocstring
+            def remove(self, irc, msg, args, channel, project_id):
+                """[<channel>] <project-id>
+
+                Stops announcing the changes of the project id <project-id> to
+                <channel>.
+                """
+
+                projects = instance._load_projects(channel)
+                if project_id not in projects:
+                    irc.error(_("""This project is not registered to this
+                                channel."""))
+                    return
+
+                # Remove project mapping
+                del projects[project_id]
+                instance._save_projects(projects, channel)
+
+                irc.replySuccess()
+
+            remove = wrap(remove, ['channel', 'text'])
+
+            @internationalizeDocstring
+            def list(self, irc, msg, args, channel):
+                """[<channel>]
+
+                Lists the registered projects in <channel>.
+                """
+
+                projects = instance._load_projects(channel)
+                if projects is None or len(projects) == 0:
+                    irc.error(_("""This channel has no registered projects."""))
+                    return
+
+                for project_id, project_slug in projects.items():
+                    irc.reply("%s: %s" % (project_id, project_slug))
+
+            list = wrap(list, ['channel'])
 
 
 Class = Taiga
