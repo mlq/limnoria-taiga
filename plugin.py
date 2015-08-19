@@ -45,11 +45,16 @@ try:
 except ImportError:
     # Placeholder that allows to run the plugin on a bot
     # without the i18n module
-    _ = lambda x: x
-    internationalizeDocstring = lambda x:x
+    def _(x):
+        return x
+
+    def internationalizeDocstring(x):
+        return x
 
 
 class TaigaHandler(object):
+    """Handle taiga messages"""
+
     def __init__(self, plugin, irc):
         self.irc = irc
         self.plugin = plugin
@@ -64,14 +69,20 @@ class TaigaHandler(object):
         payload_action = payload['action']
         payload_data = payload['data']
 
+        # Do not handle test payloads
+        if payload_type == 'test':
+            return
+
         if payload_type not in ['milestone', 'userstory', 'task', 'issue',
-                                'wikipage', 'test']:
+                                'wikipage']:
             self.log.debug("Unhandled type: '%s'" % payload_type)
             return
 
+        # Lookup format string
         format_string_identifier = "format.%s-%sd" % (payload_type, payload_action)
         project_id = payload_data['project']
 
+        # Prepare argument data
         data = {
             payload_type: payload_data,
             "project": {
@@ -81,12 +92,17 @@ class TaigaHandler(object):
             "user": payload_data['owner'],
         }
 
-        self._send_message("test", format_string_identifier, data)
+        if payload_type == 'change':
+            data['change'] = payload['change']
 
+        # Check if any of the joined channels have subscribed to this project
         for channel in self.irc.state.channels.keys():
             projects = self.plugin._load_projects(channel)
             if str(project_id) in projects.keys():
+                # Update with project slug from mapping
                 data['project']['name'] = projects[str(project_id)]
+
+                # Send message to channel
                 self._send_message(channel, format_string_identifier, data)
 
     def _send_message(self, channel, format_string_identifier, args):
@@ -94,24 +110,6 @@ class TaigaHandler(object):
         msg = format_string.format(**args)
         priv_msg = ircmsgs.privmsg(channel, msg)
         self.irc.queueMsg(priv_msg)
-
-    def _handle_milestone(self, payload):
-        pass
-
-    def _handle_userstory(self, payload):
-        pass
-
-    def _handle_task(self, payload):
-        pass
-
-    def _handle_issue(self, payload):
-        pass
-
-    def _handle_wikipage(self, payload):
-        pass
-
-    def _handle_test(self, payload):
-        pass
 
 
 class TaigaWebHookService(httpserver.SupyHTTPServerCallback):
@@ -180,7 +178,7 @@ class TaigaWebHookService(httpserver.SupyHTTPServerCallback):
         try:
             payload = json.JSONDecoder().decode(form.decode('utf-8'))
             self.taiga.handle_payload(payload)
-        except Exception as e:
+        except Exception:
             self._send_error(handler, _("""Error: Invalid data sent."""))
 
         # Return OK
