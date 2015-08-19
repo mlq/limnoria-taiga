@@ -50,6 +50,7 @@ def configure(advanced):
 
 Taiga = conf.registerPlugin('Taiga')
 
+# Settings
 conf.registerChannelValue(Taiga, 'projects',
     registry.String("", _("""List of projects""")))
 
@@ -58,5 +59,18 @@ conf.registerChannelValue(Taiga, 'secret-key',
 
 conf.registerChannelValue(Taiga, 'verify-signature',
     registry.Boolean(True, _("""Whether the signature should be checked or not""")))
+
+# Format
+conf.registerGroup(Taiga, 'format')
+
+conf.registerChannelValue(Taiga.format, 'milestone-created',
+    registry.String(_("""\x02[{project[name]}]\x02: Milestone \x02#{milestone[id]} {milestone[name]}\x02 created by {user[name]}"""),
+                    _("""Format for milestone/create events.""")))
+conf.registerChannelValue(Taiga.format, 'milestone-deleted',
+    registry.String(_("""\x02[{project[name]}]\x02: Milestone \x02#{milestone[id]} {milestone[name]}\x02 deleted by {user[name]}"""),
+                    _("""Format for milestone/delete events.""")))
+conf.registerChannelValue(Taiga.format, 'milestone-changed',
+    registry.String(_("""\x02[{project[name]}]\x02: Milestone \x02#{milestone[id]} {milestone[name]}\x02 changed by {user[name]}"""),
+                    _("""Format for milestone/change events.""")))
 
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:

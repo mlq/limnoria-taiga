@@ -56,43 +56,46 @@ class TaigaHandler(object):
         self.log = log.getPluginLogger('Taiga')
 
     def handle_payload(self, payload):
-        if 'type' not in payload:
-            return
-        if 'action' not in payload:
-            return
-        if 'data' not in payload:
+        for x in ['type', 'action', 'data']:
+            if x not in payload:
+                return
+
+        payload_type = payload['type']
+        payload_action = payload['action']
+        payload_data = payload['data']
+
+        if payload_type not in ['milestone', 'userstory', 'task', 'issue',
+                                'wikipage', 'test']:
+            self.log.debug("Unhandled type: '%s'" % payload_type)
             return
 
-        try:
-            handlers = {
-                "milestone": self._handle_milestone,
-                "userstory": self._handle_userstory,
-                "task":      self._handle_task,
-                "issue":     self._handle_issue,
-                "wikipage":  self._handle_wikipage,
-                "test":      self._handle_test
-            }
+        format_string_identifier = "format.%s-%sd" % (payload_type, payload_action)
+        project_id = payload_data['project']
 
-            method = handlers.get(payload['type'], None)
-            method(payload)
-        except NameError:
-            self.log.debug("Unhandled type: '%s'" % payload['type'])
-            return
+        data = {
+            payload_type: payload_data,
+            "project": {
+                "id": project_id,
+                "name": ""
+            },
+            "user": payload_data['owner'],
+        }
 
-    def _send_message(self, project_id, msg):
+        self._send_message("test", format_string_identifier, data)
+
         for channel in self.irc.state.channels.keys():
             projects = self.plugin._load_projects(channel)
             if str(project_id) in projects.keys():
-                msg = ircmsgs.privmsg(channel, msg)
-                self.irc.queueMsg(msg)
+                data['project']['name'] = projects[str(project_id)]
+                self._send_message(channel, format_string_identifier, data)
+
+    def _send_message(self, channel, format_string_identifier, args):
+        format_string = str(self.plugin.registryValue(format_string_identifier, channel))
+        msg = format_string.format(**args)
+        priv_msg = ircmsgs.privmsg(channel, msg)
+        self.irc.queueMsg(priv_msg)
 
     def _handle_milestone(self, payload):
-        user = payload['data']['owner']['name']
-        name = payload['data']['name']
-        action = payload['action']
-
-        msg = "Milestone '%s' %sd by %s" % (name, action, user)
-        self._send_message(payload['data']['project'], msg)
         pass
 
     def _handle_userstory(self, payload):
@@ -175,10 +178,9 @@ class TaigaWebHookService(httpserver.SupyHTTPServerCallback):
 
         # Handle payload
         try:
-            payload = json.loads(form.decode('utf-8'))
+            payload = json.JSONDecoder().decode(form.decode('utf-8'))
             self.taiga.handle_payload(payload)
         except Exception as e:
-            print(e)
             self._send_error(handler, _("""Error: Invalid data sent."""))
 
         # Return OK
