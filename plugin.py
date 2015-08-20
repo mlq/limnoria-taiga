@@ -33,7 +33,7 @@ import json
 import supybot.utils as utils
 from supybot.commands import *
 import supybot.plugins as plugins
-import supybot.ircutils as ircutils
+import supybot.ircdb as ircdb
 import supybot.ircmsgs as ircmsgs
 import supybot.callbacks as callbacks
 import supybot.log as log
@@ -216,6 +216,13 @@ class Taiga(callbacks.Plugin):
             string = json.dumps(projects)
         self.setRegistryValue('projects', value=string, channel=channel)
 
+    def _check_capability(self, irc, msg):
+        if ircdb.checkCapability(msg.prefix, 'admin'):
+            return True
+        else:
+            irc.errorNoCapability('admin')
+            return False
+
     class taiga(callbacks.Commands):
         """Taiga commands"""
 
@@ -229,6 +236,9 @@ class Taiga(callbacks.Plugin):
                 Announces the changes of the project with the id <project-id>
                 and the slug <project-slug> to <channel>.
                 """
+                if instance._check_capability(irc, msg) == False:
+                    return
+
                 projects = instance._load_projects(channel)
                 if project_id in projects:
                     irc.error(_("""This project is already announced to this
@@ -250,6 +260,8 @@ class Taiga(callbacks.Plugin):
                 Stops announcing the changes of the project id <project-id> to
                 <channel>.
                 """
+                if instance._check_capability(irc, msg) == False:
+                    return
 
                 projects = instance._load_projects(channel)
                 if project_id not in projects:
@@ -271,6 +283,8 @@ class Taiga(callbacks.Plugin):
 
                 Lists the registered projects in <channel>.
                 """
+                if instance._check_capability(irc, msg) == False:
+                    return
 
                 projects = instance._load_projects(channel)
                 if projects is None or len(projects) == 0:
