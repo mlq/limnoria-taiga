@@ -29,7 +29,10 @@
 ###
 
 import json
+import hmac
+import hashlib
 
+from supybot.commands import *
 import supybot.ircdb as ircdb
 import supybot.ircmsgs as ircmsgs
 import supybot.callbacks as callbacks
@@ -187,7 +190,7 @@ class TaigaWebHookService(httpserver.SupyHTTPServerCallback):
 
             # Verify signature
             signature = headers['X-TAIGA-WEBHOOK-SIGNATURE']
-            if self._verify_signature(secret_key, data, signature) is False:
+            if self._verify_signature(secret_key, form, signature) is False:
                 self._send_error(handler, _('Error: Invalid signature.'))
                 return
 
