@@ -176,7 +176,7 @@ class TaigaWebHookService(httpserver.SupyHTTPServerCallback):
                                         url."""))
             return
 
-        if self.irc.network != network or channel in self.irc.state.channels is False:
+        if self.irc.network != network or channel not in self.irc.state.channels:
             return
 
         secret_key = self.plugin.registryValue('secret-key', channel)
@@ -215,8 +215,7 @@ class Taiga(callbacks.Plugin):
 
     def __init__(self, irc):
         global instance
-        self.__parent = super(Taiga, self)
-        self.__parent.__init__(irc)
+        super(Taiga, self).__init__(irc)
         instance = self
 
         callback = TaigaWebHookService(self, irc)
@@ -225,7 +224,7 @@ class Taiga(callbacks.Plugin):
     def die(self):
         httpserver.unhook('taiga')
 
-        self.__parent.die()
+        super(Taiga, self).die()
 
     def _load_projects(self, channel):
         projects_string = self.registryValue('projects', channel)
