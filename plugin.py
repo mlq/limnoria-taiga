@@ -30,9 +30,6 @@
 
 import json
 
-import supybot.utils as utils
-from supybot.commands import *
-import supybot.plugins as plugins
 import supybot.ircdb as ircdb
 import supybot.ircmsgs as ircmsgs
 import supybot.callbacks as callbacks
@@ -185,26 +182,25 @@ class TaigaWebHookService(httpserver.SupyHTTPServerCallback):
         # Check for Taiga webhook signature
         if verify_signature is True:
             if 'X-TAIGA-WEBHOOK-SIGNATURE' not in headers:
-                self._send_error(handler, _("""Error: No signature provided."""))
+                self._send_error(handler, _('Error: No signature provided.'))
                 return
 
             # Verify signature
             signature = headers['X-TAIGA-WEBHOOK-SIGNATURE']
             if self._verify_signature(secret_key, data, signature) is False:
-                self._send_error(handler, _("""Error: Invalid signature."""))
+                self._send_error(handler, _('Error: Invalid signature.'))
                 return
 
         # Handle payload
         try:
             payload = json.JSONDecoder().decode(form.decode('utf-8'))
         except Exception as e:
-            self._send_error(handler, _("""Error: Invalid JSON data sent."""))
+            self._send_error(handler, _('Error: Invalid JSON data sent.'))
 
         try:
             self.taiga.handle_payload(payload)
         except Exception as e:
-            print(e)
-            self._send_error(handler, _("""Error: Invalid data sent."""))
+            self._send_error(handler, _('Error: Invalid data sent.'))
 
         # Return OK
         self._send_ok(handler)
@@ -266,8 +262,7 @@ class Taiga(callbacks.Plugin):
 
                 projects = instance._load_projects(channel)
                 if project_id in projects:
-                    irc.error(_("""This project is already announced to this
-                                channel."""))
+                    irc.error(_('This project is already announced to this channel.'))
                     return
 
                 # Save new project mapping
@@ -293,7 +288,7 @@ class Taiga(callbacks.Plugin):
 
                 projects = instance._load_projects(channel)
                 if project_id not in projects:
-                    irc.error(_("""This project is not registered to this channel."""))
+                    irc.error(_('This project is not registered to this channel.'))
                     return
 
                 # Remove project mapping
@@ -315,7 +310,7 @@ class Taiga(callbacks.Plugin):
 
                 projects = instance._load_projects(channel)
                 if projects is None or len(projects) == 0:
-                    irc.error(_("""This channel has no registered projects."""))
+                    irc.error(_('This channel has no registered projects.'))
                     return
 
                 for project_id, project_data in projects.items():
