@@ -60,6 +60,21 @@ class TaigaHandler(object):
         self.plugin = plugin
         self.log = log.getPluginLogger('Taiga')
 
+    def _build_url(self, project_url, project_slug, payload_type, payload):
+        appendix = None
+        if payload_type == 'milestone':
+            appendix = 'taskboard/' + payload['data']['slug']
+        elif payload_type == 'userstory':
+            appendix = 'us/' + str(payload['data']['id'])
+        elif payload_type == 'task':
+            appendix = 'us/' + str(payload['data']['user_story'])
+        elif payload_type == 'issue':
+            appendix = 'issue/' + str(payload['data']['id'])
+        elif payload_type == 'wikipage':
+            appendix = 'wiki/' + payload['data']['slug']
+
+        return project_url + '/' + appendix
+
     def handle_payload(self, payload):
         for x in ['type', 'action', 'data']:
             if x not in payload:
@@ -98,9 +113,14 @@ class TaigaHandler(object):
         # Check if any of the joined channels have subscribed to this project
         for channel in self.irc.state.channels.keys():
             projects = self.plugin._load_projects(channel)
-            if str(project_id) in projects.keys():
+            project_id = str(project_id)
+            if project_id in projects.keys():
                 # Update with project slug from mapping
-                data['project']['name'] = projects[str(project_id)]
+                project_slug = projects[project_id]['slug']
+                project_url = projects[project_id]['url']
+                data['project']['name'] = project_slug
+                data['url'] = self._build_url(project_url, project_slug,
+                                              payload_type, payload)
 
                 # Send message to channel
                 self._send_message(channel, format_string_identifier, data)
@@ -177,8 +197,13 @@ class TaigaWebHookService(httpserver.SupyHTTPServerCallback):
         # Handle payload
         try:
             payload = json.JSONDecoder().decode(form.decode('utf-8'))
+        except Exception as e:
+            self._send_error(handler, _("""Error: Invalid JSON data sent."""))
+
+        try:
             self.taiga.handle_payload(payload)
-        except Exception:
+        except Exception as e:
+            print(e)
             self._send_error(handler, _("""Error: Invalid data sent."""))
 
         # Return OK
@@ -230,13 +255,13 @@ class Taiga(callbacks.Plugin):
             """Project commands"""
 
             @internationalizeDocstring
-            def add(self, irc, msg, args, channel, project_id, project_slug):
-                """[<channel>] <project-id> <project-slug>
+            def add(self, irc, msg, args, channel, project_id, project_slug, taiga_host):
+                """[<channel>] <project-id> <project-slug> <taiga-host>
 
                 Announces the changes of the project with the id <project-id>
                 and the slug <project-slug> to <channel>.
                 """
-                if instance._check_capability(irc, msg) == False:
+                if not instance._check_capability(irc, msg):
                     return
 
                 projects = instance._load_projects(channel)
@@ -246,12 +271,15 @@ class Taiga(callbacks.Plugin):
                     return
 
                 # Save new project mapping
-                projects[project_id] = project_slug
+                projects[project_id] = {
+                    'slug': project_slug,
+                    'url': taiga_host + '/project/' + project_slug
+                }
                 instance._save_projects(projects, channel)
 
                 irc.replySuccess()
 
-            add = wrap(add, ['channel', 'id', 'text'])
+            add = wrap(add, ['channel', 'id', 'somethingWithoutSpaces', 'httpUrl'])
 
             @internationalizeDocstring
             def remove(self, irc, msg, args, channel, project_id):
@@ -260,13 +288,12 @@ class Taiga(callbacks.Plugin):
                 Stops announcing the changes of the project id <project-id> to
                 <channel>.
                 """
-                if instance._check_capability(irc, msg) == False:
+                if not instance._check_capability(irc, msg):
                     return
 
                 projects = instance._load_projects(channel)
                 if project_id not in projects:
-                    irc.error(_("""This project is not registered to this
-                                channel."""))
+                    irc.error(_("""This project is not registered to this channel."""))
                     return
 
                 # Remove project mapping
@@ -275,7 +302,7 @@ class Taiga(callbacks.Plugin):
 
                 irc.replySuccess()
 
-            remove = wrap(remove, ['channel', 'text'])
+            remove = wrap(remove, ['channel', 'somethingWithoutSpaces'])
 
             @internationalizeDocstring
             def list(self, irc, msg, args, channel):
@@ -283,7 +310,7 @@ class Taiga(callbacks.Plugin):
 
                 Lists the registered projects in <channel>.
                 """
-                if instance._check_capability(irc, msg) == False:
+                if not instance._check_capability(irc, msg):
                     return
 
                 projects = instance._load_projects(channel)
@@ -291,8 +318,8 @@ class Taiga(callbacks.Plugin):
                     irc.error(_("""This channel has no registered projects."""))
                     return
 
-                for project_id, project_slug in projects.items():
-                    irc.reply("%s: %s" % (project_id, project_slug))
+                for project_id, project_data in projects.items():
+                    irc.reply("%s: %s (%s)" % (project_id, project_data['slug'], project_data['url']))
 
             list = wrap(list, ['channel'])
 

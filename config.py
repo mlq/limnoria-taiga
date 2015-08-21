@@ -64,53 +64,53 @@ conf.registerChannelValue(Taiga, 'verify-signature',
 conf.registerGroup(Taiga, 'format')
 
 conf.registerChannelValue(Taiga.format, 'milestone-created',
-    registry.String(_("""\x02[{project[name]}]\x02 Milestone \x02#{milestone[id]} {milestone[name]}\x02 created by {user[name]}"""),
+    registry.String(_("""\x02[{project[name]}]\x02 Milestone \x02#{milestone[id]} {milestone[name]}\x02 created by {user[name]} {url}"""),
                     _("""Format for milestone/create events.""")))
 conf.registerChannelValue(Taiga.format, 'milestone-deleted',
-    registry.String(_("""\x02[{project[name]}]\x02 Milestone \x02#{milestone[id]} {milestone[name]}\x02 deleted by {user[name]}"""),
+    registry.String(_("""\x02[{project[name]}]\x02 Milestone \x02#{milestone[id]} {milestone[name]}\x02 deleted by {user[name]} {url}"""),
                     _("""Format for milestone/delete events.""")))
 conf.registerChannelValue(Taiga.format, 'milestone-changed',
-    registry.String(_("""\x02[{project[name]}]\x02 Milestone \x02#{milestone[id]} {milestone[name]}\x02 changed by {user[name]}"""),
+    registry.String(_("""\x02[{project[name]}]\x02 Milestone \x02#{milestone[id]} {milestone[name]}\x02 changed by {user[name]} {url}"""),
                     _("""Format for milestone/change events.""")))
 
 conf.registerChannelValue(Taiga.format, 'userstory-created',
-    registry.String(_("""\x02[{project[name]}]\x02 Userstory \x02#{userstory[id]} {userstory[subject]}\x02 created by {user[name]}"""),
+    registry.String(_("""\x02[{project[name]}]\x02 Userstory \x02#{userstory[id]} {userstory[subject]}\x02 created by {user[name]} {url}"""),
                     _("""Format for userstory/create events.""")))
 conf.registerChannelValue(Taiga.format, 'userstory-deleted',
-    registry.String(_("""\x02[{project[name]}]\x02 Userstory \x02#{userstory[id]} {userstory[subject]}\x02 deleted by {user[name]}"""),
+    registry.String(_("""\x02[{project[name]}]\x02 Userstory \x02#{userstory[id]} {userstory[subject]}\x02 deleted by {user[name]} {url}"""),
                     _("""Format for userstory/delete events.""")))
 conf.registerChannelValue(Taiga.format, 'userstory-changed',
-    registry.String(_("""\x02[{project[name]}]\x02 Userstory \x02#{userstory[id]} {userstory[subject]}\x02 changed by {user[name]}"""),
+    registry.String(_("""\x02[{project[name]}]\x02 Userstory \x02#{userstory[id]} {userstory[subject]}\x02 changed by {user[name]} {url}"""),
                     _("""Format for userstory/change events.""")))
 
 conf.registerChannelValue(Taiga.format, 'task-created',
-    registry.String(_("""\x02[{project[name]}]\x02 Task \x02#{task[id]} {task[subject]}\x02 created by {user[name]}"""),
+    registry.String(_("""\x02[{project[name]}]\x02 Task \x02#{task[id]} {task[subject]}\x02 created by {user[name]} {url}"""),
                     _("""Format for task/create events.""")))
 conf.registerChannelValue(Taiga.format, 'task-deleted',
-    registry.String(_("""\x02[{project[name]}]\x02 Task \x02#{task[id]} {task[subject]}\x02 deleted by {user[name]}"""),
+    registry.String(_("""\x02[{project[name]}]\x02 Task \x02#{task[id]} {task[subject]}\x02 deleted by {user[name]} {url}"""),
                     _("""Format for task/delete events.""")))
 conf.registerChannelValue(Taiga.format, 'task-changed',
-    registry.String(_("""\x02[{project[name]}]\x02 Task \x02#{task[id]} {task[subject]}\x02 changed by {user[name]}"""),
+    registry.String(_("""\x02[{project[name]}]\x02 Task \x02#{task[id]} {task[subject]}\x02 changed by {user[name]} {url}"""),
                     _("""Format for task/change events.""")))
 
 conf.registerChannelValue(Taiga.format, 'issue-created',
-    registry.String(_("""\x02[{project[name]}]\x02 Issue \x02#{issue[id]} {issue[subject]}\x02 created by {user[name]}"""),
+    registry.String(_("""\x02[{project[name]}]\x02 Issue \x02#{issue[id]} {issue[subject]}\x02 created by {user[name]} {url}"""),
                     _("""Format for issue/create events.""")))
 conf.registerChannelValue(Taiga.format, 'issue-deleted',
-    registry.String(_("""\x02[{project[name]}]\x02 Issue \x02#{issue[id]} {issue[subject]}\x02 deleted by {user[name]}"""),
+    registry.String(_("""\x02[{project[name]}]\x02 Issue \x02#{issue[id]} {issue[subject]}\x02 deleted by {user[name]} {url}"""),
                     _("""Format for issue/delete events.""")))
 conf.registerChannelValue(Taiga.format, 'issue-changed',
-    registry.String(_("""\x02[{project[name]}]\x02 Issue \x02#{issue[id]} {issue[subject]}\x02 changed by {user[name]}"""),
+    registry.String(_("""\x02[{project[name]}]\x02 Issue \x02#{issue[id]} {issue[subject]}\x02 changed by {user[name]} {url}"""),
                     _("""Format for issue/change events.""")))
 
 conf.registerChannelValue(Taiga.format, 'wikipage-created',
-    registry.String(_("""\x02[{project[name]}]\x02 Wikipage \x02#{wikipage[slug]} {wikipage[name]}\x02 created by {user[name]}"""),
+    registry.String(_("""\x02[{project[name]}]\x02 Wikipage \x02#{wikipage[slug]} {wikipage[name]}\x02 created by {user[name]} {url}"""),
                     _("""Format for wikipage/create events.""")))
 conf.registerChannelValue(Taiga.format, 'wikipage-deleted',
-    registry.String(_("""\x02[{project[name]}]\x02 Wikipage \x02#{wikipage[slug]} {wikipage[name]}\x02 deleted by {user[name]}"""),
+    registry.String(_("""\x02[{project[name]}]\x02 Wikipage \x02#{wikipage[slug]} {wikipage[name]}\x02 deleted by {user[name]} {url}"""),
                     _("""Format for wikipage/delete events.""")))
 conf.registerChannelValue(Taiga.format, 'wikipage-changed',
-    registry.String(_("""\x02[{project[name]}]\x02 Wikipage \x02#{wikipage[slug]} {wikipage[name]}\x02 changed by {user[name]}"""),
+    registry.String(_("""\x02[{project[name]}]\x02 Wikipage \x02#{wikipage[slug]} {wikipage[name]}\x02 changed by {user[name]} {url}"""),
                     _("""Format for wikipage/change events.""")))
 
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:
