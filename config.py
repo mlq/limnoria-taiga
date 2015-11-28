@@ -52,7 +52,7 @@ Taiga = conf.registerPlugin('Taiga')
 
 # Settings
 conf.registerChannelValue(Taiga, 'projects',
-    registry.String("", _("""List of projects""")))
+    registry.Json({}, _("""List of projects""")))
 
 conf.registerChannelValue(Taiga, 'secret-key',
     registry.String("XXXXXXXX", _("""The service secret key""")))
