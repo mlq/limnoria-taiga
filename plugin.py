@@ -65,11 +65,11 @@ class TaigaHandler(object):
         if payload_type == 'milestone':
             appendix = 'taskboard/' + payload['data']['slug']
         elif payload_type == 'userstory':
-            appendix = 'us/' + str(payload['data']['id'])
+            appendix = 'us/' + str(payload['data']['ref'])
         elif payload_type == 'task':
-            appendix = 'us/' + str(payload['data']['user_story'])
+            appendix = 'task/' + str(payload['data']['ref'])
         elif payload_type == 'issue':
-            appendix = 'issue/' + str(payload['data']['id'])
+            appendix = 'issue/' + str(payload['data']['ref'])
         elif payload_type == 'wikipage':
             appendix = 'wiki/' + payload['data']['slug']
 
