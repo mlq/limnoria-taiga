@@ -107,8 +107,9 @@ class TaigaHandler(object):
             "user": payload_data['owner'],
         }
 
-        if payload_type == 'change':
+        if payload_action == 'change':
             data['change'] = payload['change']
+            data['user'] = payload['change']['user']
 
         # Check if any of the joined channels have subscribed to this project
         for channel in self.irc.state.channels.keys():
